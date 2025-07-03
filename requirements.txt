@@ -1,0 +1,15 @@
+pip==24.3.1
+torch==2.6.0
+torchvision==0.21.0
+
+numpy==1.26.4
+opencv-python
+timm==0.9.12
+tensorboard==2.10.0
+scipy
+gdown==5.2.0
+wandb
+termcolor
+transformers
+
+-e git+https://github.com/LTH14/torch-fidelity.git@master#egg=torch-fidelity
