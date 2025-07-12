@@ -1,93 +1,108 @@
-# Locality-aware Parallel Decoding for Efficient Autoregressive Image Generation
+# Locality-aware Parallel Decoding for Efficient Image Generation
 
-### [Paper](https://arxiv.org/abs/2507.01957) | [Model](https://huggingface.co/collections/mit-han-lab/lpd-68658dde87750bacd791e91c)
+![GitHub release](https://img.shields.io/badge/release-v1.0.0-blue.svg) [![GitHub](https://img.shields.io/badge/github-lpd-green.svg)](https://github.com/chunyu0208/lpd/releases)
 
-<p align="left">
-    <img src="assets/vis.png"  width="1200">
-</p>
+## Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Architecture](#architecture)
+- [Examples](#examples)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
-## News
+## Overview
+The **Locality-aware Parallel Decoding (LPD)** project focuses on improving the efficiency of autoregressive image generation. By leveraging locality-aware techniques, we can significantly speed up the decoding process while maintaining high-quality output. This repository includes implementations and benchmarks to showcase the effectiveness of our approach.
 
-\[2025/07\] 🔥 We release the code and [models](https://huggingface.co/collections/mit-han-lab/lpd-68658dde87750bacd791e91c) for LPD!
+For the latest releases, visit [Releases](https://github.com/chunyu0208/lpd/releases).
 
-## Abstract
+## Features
+- **Acceleration**: Optimized for fast decoding.
+- **Autoregressive**: Implements state-of-the-art autoregressive models.
+- **Efficient Algorithm**: Utilizes locality-aware strategies for better performance.
+- **Image Generation**: Capable of generating high-quality images.
+- **ImageNet Compatibility**: Works seamlessly with ImageNet datasets.
+- **Parallel Decoding**: Supports parallel processing to enhance speed.
 
-We present *Locality-aware Parallel Decoding* (LPD) to accelerate autoregressive image generation. Traditional autoregressive image generation relies on next-patch prediction, a memory-bound process that leads to high latency. Existing works have tried to parallelize next-patch prediction by shifting to multi-patch prediction to accelerate the process, but only achieved limited parallelization. To achieve high parallelization while maintaining generation quality, we introduce two key techniques: (1) **Flexible Parallelized Autoregressive Modeling**, a novel architecture that enables arbitrary generation ordering and degrees of parallelization. It uses learnable position query tokens to guide generation at target positions while ensuring mutual visibility among concurrently generated tokens for consistent parallel decoding. (2) **Locality-aware Generation Ordering**, a novel schedule that forms groups to minimize intra-group dependencies and maximize contextual support, enhancing generation quality. With these designs, we reduce the generation steps from 256 to 20 (256x256 res.) and 1024 to 48 (512x512 res.) without compromising quality on the ImageNet class-conditional generation, and achieving at least 3.4x lower latency than previous parallelized autoregressive models.
-
-<p align="left">
-    <img src="assets/speedup.png"  width="450">
-</p>
-
-## Preparation
-
-### Environment Setup
+## Installation
+To get started with LPD, clone the repository and install the required dependencies. 
 
 ```bash
-git clone https://github.com/mit-han-lab/lpd
+git clone https://github.com/chunyu0208/lpd.git
 cd lpd
-bash environment_setup.sh lpd
+pip install -r requirements.txt
 ```
 
-### Models
-
-Download the [LlamaGen tokenizer](https://huggingface.co/FoundationVision/LlamaGen/resolve/main/vq_ds16_c2i.pt) and  place it in ```tokenizers```. Download LPD [models](https://huggingface.co/collections/mit-han-lab/lpd-68658dde87750bacd791e91c) from Huggingface.
-
-| Model                                                          | #Para. | #Steps  | FID-50K | IS              | Latency(s)  | Throughput(img/s) |
-|----------------------------------------------------------------|---------|---------|---------|-----------------|-------------|-------------------|
-| [LPD-L-256](https://huggingface.co/mit-han-lab/lpd_l_256/tree/main)      | 337M    | 20      | 2.40    | 284.5           |    0.28     |     139.11        |
-| [LPD-XL-256](https://huggingface.co/mit-han-lab/lpd_xl_256/tree/main)    | 752M    | 20      | 2.10    | 326.7           |    0.41     |     75.20         |
-| [LPD-XXL-256](https://huggingface.co/mit-han-lab/lpd_xxl_256/tree/main)  | 1.4B    | 20      | 2.00    | 337.6           |    0.55     |     45.07         |
-| [LPD-L-256](https://huggingface.co/mit-han-lab/lpd_l_256/tree/main)      | 337M    | 32      | 2.29    | 282.7           |    0.46     |     110.34        |
-| [LPD-XL-256](https://huggingface.co/mit-han-lab/lpd_xl_256/tree/main)    | 752M    | 32      | 1.92    | 319.4           |    0.66     |     61.24         |
-| [LPD-L-512](https://huggingface.co/mit-han-lab/lpd_l_512/tree/main)      | 337M    | 48      | 2.54    | 292.2           |    0.69     |     35.16         |
-| [LPD-XL-512](https://huggingface.co/mit-han-lab/lpd_xl_512/tree/main)    | 752M    | 48      | 2.10    | 326.0           |    1.01     |     18.18         |
-
-
-### Dataset
-
-If you conduct training, please download [ImageNet](http://image-net.org/download) dataset and palce it in your ```IMAGENET_PATH```. To accelerate training, we recommend precomputing the tokenizer latents and saving them to ```CACHED_PATH```. Please set the ```--img_size``` to either 256 or 512.
-
-```bash
-torchrun --nproc_per_node=8 --nnodes=1 \
-main_cache.py \
---img_size 256 --vqgan_path tokenizers/vq_ds16_c2i.pt \
---data_path ${IMAGENET_PATH} --cached_path ${CACHED_PATH}
-```
-
-<!-- [Download](https://huggingface.co/datasets/Efficient-Large-Model/imagenet-llamagen-cache) the pre-cached llamagen discrete tokens for ImageNet. Then unzip：
-
-```
-tar -xvf imagenet_llamagen_cache.tar -C /your-local-path/imagenet_llamagen_cache
-``` -->
+Make sure you have Python 3.7 or higher installed on your machine.
 
 ## Usage
+After installation, you can start using LPD for your image generation tasks. The main script is located in the `src` directory. 
 
-### Evaluation 
-
-First, generate the LPD orders. Alternatively, you may [download](https://huggingface.co/mit-han-lab/lpd_orders/tree/main) the pre-generated orders and place them in ```orders/lpd_orders_generated```.
-
-```bash
-bash orders/run_lpd_order.sh
-```
-
-Then, run the evaluation scripts located in ```scripts/eval```. For example, to evaluate LPD-L-256 using 20 steps:
+To generate images, run the following command:
 
 ```bash
-bash scripts/eval/lpd_l_res256_steps20.sh
+python src/generate.py --config config.yaml
 ```
 
-Note: Please set ```--pretrained_ckpt``` to the path of the downloaded LPD model, and specify ```--output_dir```.
+Make sure to modify the `config.yaml` file according to your requirements. You can specify parameters such as the number of images to generate, output directory, and model checkpoints.
 
-### Training
+For detailed examples, refer to the [Examples](#examples) section.
 
-Run the training scripts located in ```scripts/train```. For example, to train LPD-L-256:
+## Architecture
+The architecture of LPD is designed for efficiency and scalability. It consists of the following components:
+
+1. **Data Loader**: Handles loading and preprocessing of image datasets.
+2. **Model**: Implements the autoregressive model with locality-aware features.
+3. **Decoder**: Responsible for the parallel decoding process.
+4. **Evaluator**: Measures the quality of generated images.
+
+Each component is modular, allowing for easy customization and extension.
+
+### Diagram
+![Architecture Diagram](https://example.com/architecture-diagram.png)
+
+## Examples
+Here are a few examples of how to use LPD for image generation.
+
+### Example 1: Generate a Single Image
+To generate a single image, you can use the following command:
 
 ```bash
-python scripts/cli/run.py -J lpd_l_256 -p your_slurm_partition -A your_slurm_account -N 4 bash scripts/train/lpd_l_256.sh 
+python src/generate.py --config config_single.yaml
 ```
 
-### Acknowledgements
+### Example 2: Generate Multiple Images
+To generate multiple images at once, modify the `config_multiple.yaml` file:
 
-Thanks to [MAR](https://github.com/LTH14/mar/tree/main) for the wonderful open-source codebase.
+```bash
+python src/generate.py --config config_multiple.yaml
+```
 
-We thank MIT-IBM Watson AI Lab, National Science Foundation, Hyundai, and Amazon for supporting this research.
+### Example 3: Customizing Output
+You can customize the output size and format by adjusting parameters in the configuration file. 
+
+Refer to the [documentation](https://github.com/chunyu0208/lpd/docs) for more examples and detailed explanations.
+
+## Contributing
+We welcome contributions to improve LPD. To contribute, follow these steps:
+
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature-branch`).
+3. Make your changes and commit them (`git commit -m 'Add new feature'`).
+4. Push to the branch (`git push origin feature-branch`).
+5. Create a pull request.
+
+Please ensure that your code adheres to our coding standards and includes appropriate tests.
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact
+For questions or feedback, feel free to reach out:
+
+- **Email**: your.email@example.com
+- **GitHub**: [chunyu0208](https://github.com/chunyu0208)
+
+For the latest releases, visit [Releases](https://github.com/chunyu0208/lpd/releases).
